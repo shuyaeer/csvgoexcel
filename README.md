@@ -2,18 +2,27 @@
 
 CsvGoExcel is a simple comverting tool between csv and xlsx.
 
-# How To Use
+# How to install
 
 ```bash
-$ go run main sample.csv
-sample.xlsx is generated
+$ go install github.com/shuyaeer/csvgoexcel@latest
+$ which csvgoexcel
+  $GOPATH/bin/csvgoexcel
 ```
 
-More options are now developing.
+# How to use
 
-- be cli
-- excel to csv
+You can pass the file path as command line argument, `csv` or `xlsx` file type.
 
-## License
+```bash
+$ csvgoexcel sample.csv
+target file: sample.csv
+sample.xlsx is generated!
+```
 
-[MIT](https://choosealicense.com/licenses/mit/)
+# Under developing
+
+- accept starndard input
+- deal with tsv
+
+and so on...
