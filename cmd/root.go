@@ -22,39 +22,108 @@ var RootCmd = &cobra.Command{
 	},
 }
 
+var columnIndexList map[int]string
+
 func main(args []string) {
-	fileName := args[0]
-	fmt.Println(fileName)
-	file, err := os.Open(fileName)
+	if len(args) == 0 {
+		panic("Plese designate file path.")
+	}
+	filePath := args[0]
+	fmt.Println("target file: " + filePath)
+	fileExtention := filepath.Ext(filePath)
+	if fileExtention == ".csv" {
+		csvToExcel(filePath)
+	} else if fileExtention == ".xlsx" {
+		excelToCsv(filePath)
+	}
+}
+
+func csvToExcel(filePath string) {
+	// able to deal with maximum 52 colums
+	columnIndexList = map[int]string{0: "A", 1: "B", 2: "C", 3: "D", 4: "E", 5: "F", 6: "G", 7: "H", 8: "I", 9: "J", 10: "K", 11: "L", 12: "M", 13: "M", 14: "O", 15: "p", 16: "Q", 17: "R", 18: "S", 19: "T", 20: "U", 21: "V", 22: "W", 23: "X", 24: "Y", 25: "Z"}
+	file, err := os.Open(filePath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
-	r := csv.NewReader(file)
-	line_index := 1
+	reader := csv.NewReader(file)
+	lineIndex := 1
 	writer := excelize.NewFile()
+	firstRow := addExtraColumns(reader)
+	convertToExcel(firstRow, lineIndex, writer)
+	lineIndex = lineIndex + 1
 	for {
-		row, err := r.Read()
+		row, err := reader.Read()
 		if err == io.EOF {
 			break
 		}
-		create_elsx(row, line_index, writer)
-		line_index = line_index + 1
+		convertToExcel(row, lineIndex, writer)
+		lineIndex = lineIndex + 1
 	}
-	fileExt := filepath.Ext(fileName)
-	withoutExt := strings.Replace(fileName, fileExt, "", 1)
-	f := strings.Split(withoutExt, "/")
-	excelFileName := f[len(f)-1] + ".xlsx"
-	fmt.Println(excelFileName + " is generated")
-	writer.SaveAs("./" + excelFileName)
+	fileName := createOutputFile(filePath, ".csv")
+	writer.SaveAs("./" + fileName)
 }
 
-func create_elsx(row []string, line_index int, writer *excelize.File) {
-	// need to handle more column,,,
-	m := map[int]string{0: "A", 1: "B", 2: "C", 3: "D", 4: "E", 5: "F"}
-	line_index_str := strconv.Itoa(line_index)
+func convertToExcel(row []string, lineIndex int, writer *excelize.File) {
+	lineIndexStr := strconv.Itoa(lineIndex)
 	for i := 0; i < len(row); i++ {
-		area := m[i] + line_index_str
+		area := columnIndexList[i] + lineIndexStr
 		writer.SetCellValue("Sheet1", area, row[i])
 	}
+}
+
+func addExtraColumns(reader *csv.Reader) []string {
+	var firstRowCount int
+	var row []string
+	for i := 0; i < 1; i++ {
+		firstRow, err := reader.Read()
+		row = firstRow
+		if err == io.EOF {
+			break
+		}
+		firstRowCount = len(firstRow)
+	}
+	if firstRowCount > len(columnIndexList) {
+		diff := firstRowCount - len(columnIndexList)
+		for i := 0; i < diff; i++ {
+			columnIndexList[len(columnIndexList)] = columnIndexList[0] + columnIndexList[i]
+		}
+	}
+	return row
+}
+
+func excelToCsv(filePath string) {
+	file, err := excelize.OpenFile(filePath)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	outputFileName := strings.Replace(filePath, ".xlsx", "", 1) + ".csv"
+	outputFile, err := os.Create(outputFileName)
+	if err != nil {
+		panic(err)
+	}
+	defer outputFile.Close()
+	w := csv.NewWriter(outputFile)
+	rows := file.GetRows("Sheet1")
+	for _, record := range rows {
+		if err := w.Write(record); err != nil {
+			log.Fatalln("faild to write csv", err)
+		}
+	}
+	w.Flush()
+	createOutputFile(filePath, ".csv")
+}
+
+func createOutputFile(filePath string, inputExtention string) string {
+	withoutExtention := strings.Replace(filePath, inputExtention, "", 1)
+	f := strings.Split(withoutExtention, "/")
+	var fileName string
+	if inputExtention == ".csv" {
+		fileName = f[len(f)-1] + ".xlsx"
+	} else {
+		fileName = f[len(f)-1] + ".csv"
+	}
+	fmt.Println(fileName + " is generated!")
+	return fileName
 }
