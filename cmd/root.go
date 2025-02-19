@@ -112,7 +112,7 @@ func excelToCsv(filePath string) {
 		}
 	}
 	w.Flush()
-	createOutputFile(filePath, ".csv")
+	createOutputFile(filePath, ".xlsx")
 }
 
 func createOutputFile(filePath string, inputExtention string) string {
